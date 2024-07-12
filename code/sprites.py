@@ -11,6 +11,7 @@ class Player(pygame.sprite.Sprite):
         
         # rect & movement
         self.rect = self.image.get_frect(center = (POS['player']))
+        self.old_rect = self.rect.copy()
         self.direction = 0
         self.speed = SPEED['player']
         
@@ -22,12 +23,14 @@ class Player(pygame.sprite.Sprite):
         self.direction = int(keys[pygame.K_DOWN] or keys[pygame.K_s]) - int(keys[pygame.K_UP] or keys[pygame.K_w])
         
     def update(self, dt):
+        self.old_rect = self.rect.copy()
         self.get_direction()
         self.move(dt)
         
 class Ball(pygame.sprite.Sprite):
     def __init__(self, groups, paddle_sprites):
         super().__init__(groups)
+        self.paddle_sprites = paddle_sprites
         
         # image
         self.image = pygame.Surface(SIZE['ball'], pygame.SRCALPHA)
@@ -35,10 +38,22 @@ class Ball(pygame.sprite.Sprite):
         
         # rect & movement
         self.rect = self.image.get_frect(center = (WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2))
+        self.old_rect = self.rect.copy()
         self.direction = pygame.Vector2(choice((1, -1)), uniform(0.7, 0.8) * choice((-1, 1)))
         
     def move(self, dt):
-        self.rect.center += self.direction * SPEED['ball'] * dt
+        self.rect.x += self.direction.x * SPEED['ball'] * dt
+        self.collision('horizontal')
+        self.rect.y += self.direction.y * SPEED['ball'] * dt
+        self.collision('vertical')
+        
+    def collision(self, direction):
+        for sprite in self.paddle_sprites:
+            if self.rect.colliderect(self.rect):
+                if direction == 'horizontal':
+                    if self.rect.right > sprite.rect.left and self.old_rect.right <= sprite.old_rect.left:
+                        self.rect.right = sprite.rect.left
+                        self.direction.x *= -1
         
     def wall_collision(self):
         if self.rect.top <= 0:
@@ -60,5 +75,6 @@ class Ball(pygame.sprite.Sprite):
         
         
     def update(self, dt):
+        self.old_rect = self.rect.copy()
         self.move(dt)
         self.wall_collision()
